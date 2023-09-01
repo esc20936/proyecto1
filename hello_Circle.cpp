@@ -219,70 +219,95 @@ int main(int argc, char **argv)
         float initialSpeedY = 0.0005f;
         circleSpeeds[circle] = glm::vec2(initialSpeedX, initialSpeedY);
     }
+
+    int frameCount = 0;
+    double lastTime = glfwGetTime();
+    double deltaTime = 0.0;
+
     while (!glfwWindowShouldClose(window))
-{
-    processInput(window);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Update the time for animation
-    float time = glfwGetTime();
-
-    glUseProgram(shaderProgram);
-    glUniform1f(glGetUniformLocation(shaderProgram, "time"), time); // Pass time to the shader
-
-    glBindVertexArray(VAO);
-
-    // Update circle positions and buffer data
-    for (int circle = 0; circle < numCircles; circle++)
     {
-        circlePositions[circle].x += circleSpeeds[circle].x; // Adjust the movement speed as needed
-        circlePositions[circle].y += circleSpeeds[circle].y; // Adjust the movement speed as needed
 
-        // Check if the circle reaches the screen boundaries
-        if (circlePositions[circle].x > 1.0f - radius || circlePositions[circle].x < -1.0f + radius)
+        double currentTime = glfwGetTime();
+        deltaTime += (currentTime - lastTime);
+        lastTime = currentTime;
+
+        // Update frame count
+        frameCount++;
+
+        // Calculate FPS and update at a regular interval (e.g., every second)
+        if (deltaTime >= 1.0)
         {
-            // Reverse the x-direction to simulate bounce
-            circleSpeeds[circle].x *= -1.0f;
+            double fps = frameCount / deltaTime;
+
+            // Print FPS to console
+            std::cout << "FPS: " << fps << std::endl;
+
+            // Reset frame count and elapsed time
+            frameCount = 0;
+            deltaTime = 0.0;
         }
-        if (circlePositions[circle].y > 1.0f - radius || circlePositions[circle].y < -1.0f + radius)
+
+        processInput(window);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Update the time for animation
+        float time = glfwGetTime();
+
+        glUseProgram(shaderProgram);
+        glUniform1f(glGetUniformLocation(shaderProgram, "time"), time); // Pass time to the shader
+
+        glBindVertexArray(VAO);
+
+        // Update circle positions and buffer data
+        for (int circle = 0; circle < numCircles; circle++)
         {
-            // Reverse the y-direction to simulate bounce
-            circleSpeeds[circle].y *= -1.0f;
-        }
+            circlePositions[circle].x += circleSpeeds[circle].x; // Adjust the movement speed as needed
+            circlePositions[circle].y += circleSpeeds[circle].y; // Adjust the movement speed as needed
 
-        // Update the buffer data with the new positions
-        int offset = spaceForVertices * circle;
-        vertices[offset] = circlePositions[circle].x;
-        vertices[offset + 1] = circlePositions[circle].y;
-        vertices[offset + 2] = 0.0f;
+            // Check if the circle reaches the screen boundaries
+            if (circlePositions[circle].x > 1.0f - radius || circlePositions[circle].x < -1.0f + radius)
+            {
+                // Reverse the x-direction to simulate bounce
+                circleSpeeds[circle].x *= -1.0f;
+            }
+            if (circlePositions[circle].y > 1.0f - radius || circlePositions[circle].y < -1.0f + radius)
+            {
+                // Reverse the y-direction to simulate bounce
+                circleSpeeds[circle].y *= -1.0f;
+            }
 
-        for (int i = 0; i <= segments; ++i)
-        {
-            float theta = 2.0f * 3.1415926f * float(i) / float(segments);
-            int offset = spaceForVertices * circle + 3 * (i + 1); // Start from index 3
-
-            vertices[offset] = circlePositions[circle].x + radius * cos(theta);
-            vertices[offset + 1] = circlePositions[circle].y + radius * sin(theta);
+            // Update the buffer data with the new positions
+            int offset = spaceForVertices * circle;
+            vertices[offset] = circlePositions[circle].x;
+            vertices[offset + 1] = circlePositions[circle].y;
             vertices[offset + 2] = 0.0f;
+
+            for (int i = 0; i <= segments; ++i)
+            {
+                float theta = 2.0f * 3.1415926f * float(i) / float(segments);
+                int offset = spaceForVertices * circle + 3 * (i + 1); // Start from index 3
+
+                vertices[offset] = circlePositions[circle].x + radius * cos(theta);
+                vertices[offset + 1] = circlePositions[circle].y + radius * sin(theta);
+                vertices[offset + 2] = 0.0f;
+            }
         }
+
+        // Update the buffer data
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * spaceForVertices * numCircles, vertices, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Render circles
+        for (int circle = 0; circle < numCircles; circle++)
+        {
+            glDrawArrays(GL_TRIANGLE_FAN, circle * (segments + 2), segments + 2);
+        }
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
     }
-
-    // Update the buffer data
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * spaceForVertices * numCircles, vertices, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // Render circles
-    for (int circle = 0; circle < numCircles; circle++)
-    {
-        glDrawArrays(GL_TRIANGLE_FAN, circle * (segments + 2), segments + 2);
-    }
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
-}
-
 
     // optional: de-allocate all resources once they've outlived their purpose:
     // ------------------------------------------------------------------------
