@@ -62,6 +62,18 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    // validate the input is a number
+    
+    if(!isdigit(*argv[1])) {
+        std::cout << "Usage: " << argv[0] << " <number of circles>" << std::endl;
+        return -1;
+    }
+
+    if(atoi(argv[1]) < 1) {
+        std::cout << "Usage: " << argv[0] << " <number of circles>" << std::endl;
+        return -1;
+    }
+
     int numCircles = atoi(argv[1]);
 
     // glfw: initialize and configure
