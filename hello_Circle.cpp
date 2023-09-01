@@ -1,8 +1,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
 #include <iostream>
 #include <cmath>
+#include <random>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -17,16 +17,45 @@ const char *vertexShaderSource = "#version 330 core\n"
     "{\n"
     "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
     "}\0";
-const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\n\0";
+const char *fragmentShaderSource = R"(
+#version 330 core
+out vec4 FragColor;
+
+void main()
+{
+    // Define the center and radius of the bubble
+    vec2 center = vec2(0.5, 0.5);
+    float radius = 0.5;
+
+    // Calculate the distance from the fragment to the center
+    vec2 fragPos = gl_FragCoord.xy / 800.0; // Assuming a resolution of 800x600
+    float distance = length(fragPos - center);
+
+    // Define bubble colors
+    vec3 bubbleColor = vec3(0.0, 0.5, 1.0); // Bubble color (blue)
+
+    // Add a shimmering effect based on distance and time
+    float shimmer = 0.1 * sin(distance * 20.0 + 2.0 * 3.14159265359 * gl_FragCoord.x / 800.0);
+
+    // Combine the bubble color and shimmer effect
+    vec3 finalColor = bubbleColor + vec3(shimmer);
+
+    // Set the alpha value based on distance from the center
+    float alpha = smoothstep(radius - 0.02, radius + 0.02, distance);
+
+    // Add transparency to the bubble
+    alpha *= 0.5; // You can adjust this value for the desired level of transparency
+
+    FragColor = vec4(finalColor, alpha);
+}
+)";
+
+
+
+
 
 int main(int argc, char** argv)
 {
-
     // should read how many circles to draw from command line
     if (argc != 2) {
         std::cout << "Usage: " << argv[0] << " <number of circles>" << std::endl;
@@ -34,7 +63,6 @@ int main(int argc, char** argv)
     }
 
     int numCircles = atoi(argv[1]);
-
 
     // glfw: initialize and configure
     // ------------------------------
@@ -49,15 +77,17 @@ int main(int argc, char** argv)
 
     // glfw window creation
     // --------------------
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Fullscreen OpenGL", glfwGetPrimaryMonitor(), NULL);
+    if (window == NULL) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // glEnable(GL_BLEND);
+    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // glad: load all OpenGL function pointers
     // ---------------------------------------
@@ -109,50 +139,41 @@ int main(int argc, char** argv)
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
-    const float radius = 0.5f;
+    const float radius = 0.10f;
     const int segments = 360; // Number of triangle fan segments
+
+    
+    
 
     const int spaceForVertices = 3 * (segments + 2); // (x, y, z) for each vertex
 
-
-
     // Calculate vertices for the circle
-    float vertices[spaceForVertices * numCircles]; // (x, y, z) for each vertex
-    
-    for(int circle=0; circle<numCircles;circle++){
-        float theta = 2.0f * 3.1415926f * float(circle) / float(numCircles);
+    float* vertices = new float[spaceForVertices * numCircles]; // (x, y, z) for each vertex
+
+    for (int circle = 0; circle < numCircles; circle++) {
+        float theta = 1.50f * 3.1415926f * float(circle) / float(numCircles);
         int offset = spaceForVertices * circle; // Start from index 3
 
-        vertices[offset] = radius * cos(theta);
-        vertices[offset + 1] = radius * sin(theta);
+        // float centerX = 
+        // float centerY = 2.0f;
+        // float centerX should be a random number between -1.0 and 1.0
+        // float centerY should be a random number between -1.0 and 1.0
+        float centerX = 2.0f * (float)rand() / (float)RAND_MAX - 1.0f;
+        float centerY = 2.0f * (float)rand() / (float)RAND_MAX - 1.0f;
+
+        vertices[offset] = centerX;
+        vertices[offset + 1] = centerY;
         vertices[offset + 2] = 0.0f;
 
         for (int i = 0; i <= segments; ++i) {
             float theta = 2.0f * 3.1415926f * float(i) / float(segments);
             int offset = spaceForVertices * circle + 3 * (i + 1); // Start from index 3
 
-            vertices[offset] = radius * cos(theta);
-            vertices[offset + 1] = radius * sin(theta);
+            vertices[offset] = centerX + radius * cos(theta);
+            vertices[offset + 1] = centerY + radius * sin(theta);
             vertices[offset + 2] = 0.0f;
         }
-
     }
-
-
-
-
-    // vertices[0] = 0.0f; // Center of the circle
-    // vertices[1] = 0.0f;
-    // vertices[2] = 0.0f;
-
-    // for (int i = 0; i <= segments; ++i) {
-    //     float theta = 2.0f * 3.1415926f * float(i) / float(segments);
-    //     int offset = 3 * (i + 1); // Start from index 3
-
-    //     vertices[offset] = radius * cos(theta);
-    //     vertices[offset + 1] = radius * sin(theta);
-    //     vertices[offset + 2] = 0.0f;
-    // }
 
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
@@ -161,34 +182,30 @@ int main(int argc, char** argv)
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * spaceForVertices * numCircles, vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // render loop
     // -----------
     while (!glfwWindowShouldClose(window))
     {
-        // input
-        // -----
         processInput(window);
-
-        // render
-        // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // draw our circle
         glUseProgram(shaderProgram);
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, segments + 2); // Use GL_TRIANGLE_FAN to draw the circle
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
+        for (int circle = 0; circle < numCircles; circle++)
+        {
+            glDrawArrays(GL_TRIANGLE_FAN, circle * (segments + 2), segments + 2);
+        }
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -198,6 +215,8 @@ int main(int argc, char** argv)
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteProgram(shaderProgram);
+
+    delete[] vertices;
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
